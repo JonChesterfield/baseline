@@ -28,3 +28,5 @@ OPT="$RDIR/bin/opt"
 
 $CLANGXX -O2 -fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=$GFX example.cpp -o example.openmp
 
+$CLANGXX -std=c++11 -x hip example.cpp --offload-arch=$GFX -L$RDIR/lib -Wl,-rpath=$RDIR/lib  -lamdhip64  -o example.hip
+
