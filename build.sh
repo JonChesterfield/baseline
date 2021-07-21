@@ -29,7 +29,9 @@ LINK="$RDIR/bin/llvm-link"
 OPT="$RDIR/bin/opt"
 
 
-$CLANGXX -std=c++11 -O2 -fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=$GFX example.cpp -o example.openmp
+$CLANGXX -std=c++11 -O2 -fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=$GFX example.cpp -o example.cxx.openmp
+
+$CLANG -std=c99 -O2 -fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=$GFX -x c example.cpp -o example.c.openmp
 
 $CLANGXX -std=c++11 -x hip example.cpp --offload-arch=$GFX -L$RDIR/lib -Wl,-rpath=$RDIR/lib  -lamdhip64  -o example.hip
 

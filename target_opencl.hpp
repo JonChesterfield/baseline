@@ -137,11 +137,13 @@ static int target(const char *srcfile, uint32_t bytes, const char *src,
   };
   size_t Nsources = sizeof(sources) / sizeof(sources[0]);
 
+  printf("sources[1] %s\n", sources[1]);
+
   cl_program program =
       clCreateProgramWithSource(context, Nsources, sources, NULL, &err);
   ERRRET()
 
-  err = clBuildProgram(program, 1, &device, NULL, NULL, NULL);
+  err = clBuildProgram(program, 1, &device, "-I.", NULL, NULL);
 
   if (err == CL_BUILD_PROGRAM_FAILURE) {
     // Determine the size of the log

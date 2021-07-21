@@ -6,34 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct raiifree {
-  raiifree(char *x) : x(x) {}
-  ~raiifree() { free(x); }
-
-private:
-  char *x;
-};
-
-static inline char *from_file(const char *filename) {
-  FILE *f = fopen(filename, "r");
-  if (!f)
-    return NULL;
-
-  struct onexit_ {
-    onexit_(FILE *f) : f(f) {}
-    ~onexit_() {
-      if (f)
-        fclose(f);
-    }
-
-  private:
-    FILE *f;
-  } onexit(f);
-
-  if (ferror(f)) {
-    return NULL;
-  }
-
+static inline char *from_opened_file(FILE *f) {
   char *buffer = NULL;
   unsigned blocksize = 8192;
 
@@ -66,18 +39,27 @@ static inline char *from_file(const char *filename) {
   }
 }
 
-inline int
-compare(const char *srcfile, void (*host)(unsigned, const char *, char *),
-        int (*target)(const char *srcfile, unsigned, const char *, char *),
-        unsigned N, const char *src) {
-  char *dst = (char *)malloc(N);
-  char *res = (char *)malloc(N);
-
-  raiifree d(dst), r(res);
-  if (!dst || !res) {
-    printf("Malloc failed\n");
-    return 1;
+static inline char *from_file(const char *filename) {
+  FILE *f = fopen(filename, "r");
+  if (!f) {
+    return NULL;
   }
+
+  if (ferror(f)) {
+    return NULL;
+  }
+
+  char *res = from_opened_file(f);
+
+  fclose(f);
+
+  return res;
+}
+
+inline int compare_withbuffer(
+    const char *srcfile, void (*host)(unsigned, const char *, char *),
+    int (*target)(const char *srcfile, unsigned, const char *, char *),
+    unsigned N, const char *src, char *dst, char *res) {
 
   // host succeeds
   host(N, src, res);
@@ -101,6 +83,27 @@ compare(const char *srcfile, void (*host)(unsigned, const char *, char *),
   }
 
   return 0;
+}
+
+inline int
+compare(const char *srcfile, void (*host)(unsigned, const char *, char *),
+        int (*target)(const char *srcfile, unsigned, const char *, char *),
+        unsigned N, const char *src) {
+  char *dst = (char *)malloc(N);
+  char *res = (char *)malloc(N);
+
+  int cmp;
+  if (dst && res) {
+    cmp = compare_withbuffer(srcfile, host, target, N, src, dst, res);
+  } else {
+    printf("Malloc failed\n");
+    cmp = 1;
+  }
+
+  free(dst);
+  free(res);
+
+  return cmp;
 }
 
 #endif
