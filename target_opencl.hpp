@@ -4,9 +4,9 @@
 #ifdef __OPENCL__
 #include "CL/cl.h"
 #include "CL/cl_ext.h"
-
-#include <assert.h>
 #include <stdio.h>
+
+#include "util.hpp"
 
 #define CaseReturnString(x)                                                    \
   case x:                                                                      \
@@ -95,59 +95,8 @@ const char *kernel_source =
     return 1;                                                                  \
   }
 
-static char *from_file(const char *filename) {
-  FILE *f = fopen(filename, "r");
-  if (!f)
-    return NULL;
-
-  struct onexit_ {
-    onexit_(FILE *f) : f(f) {}
-    ~onexit_() {
-      if (f)
-        fclose(f);
-    }
-
-  private:
-    FILE *f;
-  } onexit(f);
-
-  if (ferror(f)) {
-    return NULL;
-  }
-
-  char *buffer = NULL;
-  unsigned blocksize = 8192;
-
-  // warning, not unit tested
-  for (uint64_t blocks_read = 0;;) {
-    {
-      char *tmp = (char *)realloc(buffer, ((blocks_read + 1) * blocksize));
-      if (!tmp) {
-        free(buffer);
-        return NULL;
-      }
-      buffer = tmp;
-    }
-
-    size_t r = fread(&buffer[blocksize * blocks_read], 1, blocksize, f);
-    blocks_read++;
-
-    assert(r <= blocksize);
-    if (r < blocksize) {
-      if (feof(f)) {
-        // reached end of file
-        uint64_t N = ((blocks_read - 1) * blocksize) + r;
-        buffer[N] = '\0';
-        return buffer; // realloc down?
-      } else if (ferror(f)) {
-        free(buffer);
-        return NULL;
-      }
-    }
-  }
-}
-
-static int target(uint32_t bytes, const char *src, char *dst) {
+static int target(const char *srcfile, uint32_t bytes, const char *src,
+                  char *dst) {
   // copying from
   // https://rocmdocs.amd.com/en/latest/Programming_Guides/Opencl-programming-guide.html#build-run-opencl
 
@@ -170,7 +119,7 @@ static int target(uint32_t bytes, const char *src, char *dst) {
   cl_command_queue queue = clCreateCommandQueue(context, device, 0, &err);
   ERRRET()
 
-  char *f = from_file(SRCFILE());
+  char *f = from_file(srcfile);
   struct onexit_ {
     onexit_(char *f) : f(f) {}
     ~onexit_() { free(f); }
@@ -178,7 +127,7 @@ static int target(uint32_t bytes, const char *src, char *dst) {
   } onexit(f);
 
   if (!f) {
-    printf("opencl failed to read file %s\n", SRCFILE());
+    printf("opencl failed to read file %s\n", srcfile);
     return 1;
   }
 

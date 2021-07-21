@@ -10,7 +10,7 @@ __attribute__((global)) void target_hip_global(uint32_t N, const char *src,
   test(N, src, dst);
 }
 
-static int target(uint32_t bytes, const char *src, char *dst) {
+static int target(const char *, uint32_t bytes, const char *src, char *dst) {
 
   struct hfi {
     hfi(char *ptr) : ptr(ptr) {}

@@ -18,19 +18,14 @@ extern "C"
     test(unsigned N, GLOBAL() const char *src, GLOBAL() char *dst);
 
 #ifdef __OPENCL_VERSION__
-
 #if defined(_OPENMP) || defined(__HIP__)
 #error "Unexpected language macro within opencl region"
 #endif
-
 #endif
 
 #ifndef __OPENCL_VERSION__
 
 #include <stdint.h>
-
-// TODO: Manage this via headers
-inline const char *SRCFILE() { return __FILE__; }
 
 #include "target_hip.hpp"
 #include "target_opencl.hpp"
@@ -40,14 +35,13 @@ void host(unsigned N, GLOBAL() const char *src, GLOBAL() char *dst) {
   test(N, src, dst);
 }
 
+#include "util.hpp"
 #include <stdio.h>
 
 int main() {
 
   constexpr uint32_t N = 16;
   uint32_t src[N];
-  uint32_t dst[N];
-  uint32_t res[N];
 
   for (uint32_t i = 0; i < N; i++) {
     src[i] = i;
@@ -55,29 +49,12 @@ int main() {
 
   uint32_t bytes = N * sizeof(uint32_t);
 
-  host(bytes, (const char *)&src[0], (char *)&res[0]);
-
-  int rc = target(bytes, (const char *)&src[0], (char *)&dst[0]);
-  if (rc != 0) {
-    printf("target offload failed\n");
-    return 1;
+  int rc = compare(__FILE__, host, target, bytes, (const char *)&src[0]);
+  if (rc == 0) {
+    printf("Ran successfully\n");
   }
 
-  uint32_t err = 0;
-  for (uint32_t i = 0; i < N; i++) {
-    if (dst[i] != res[i]) {
-      err++;
-      printf("error at %u, %u != %u\n", i, dst[i], res[i]);
-    }
-  }
-
-  if (err != 0) {
-    return 1;
-  }
-
-  printf("Ran successfully\n");
-
-  return 0;
+  return rc;
 }
 
 #endif
