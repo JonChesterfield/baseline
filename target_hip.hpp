@@ -63,8 +63,6 @@ static int target(uint32_t bytes, const char *src, char *dst) {
   return 0;
 }
 
-
 #endif
-
 
 #endif

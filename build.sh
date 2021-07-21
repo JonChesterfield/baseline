@@ -3,6 +3,9 @@ set -x
 set -e
 set -o pipefail
 
+for i in example.cpp *.hpp; do
+    clang-format -i $i
+done
 
 if true; then
     # Aomp

@@ -5,6 +5,9 @@
 #include "CL/cl.h"
 #include "CL/cl_ext.h"
 
+#include <assert.h>
+#include <stdio.h>
+
 #define CaseReturnString(x)                                                    \
   case x:                                                                      \
     return #x
@@ -75,17 +78,14 @@ static const char *opencl_errstr(cl_int err) {
   }
 }
 
-
 const char *kernel_source =
-  "#ifndef __OPENCL_VERSION__\n"
-  "#error \"Expected OPENCL_VERSION define\"\n"
-  "#endif\n"
-    "void test(uint N, global const char *src, global char *dst);\n"
-    "kernel void target_opencl_kernel(uint N, global const char *src, "
+    "#ifndef __OPENCL_VERSION__\n"
+    "#error \"Expected OPENCL_VERSION define\"\n"
+    "#endif\n"
+    "void test(unsigned N, global const char *src, global char *dst);\n"
+    "kernel void target_opencl_kernel(unsigned N, global const char *src, "
     "global char *dst) {\n"
-    "   global uint* p = (global uint*)dst;\n"
-    "   for (uint i = 0; i < N/4; i++) p[i] = 42;\n"
-    "   // test(N, src, dst);\n"
+    "   test(N, src, dst);\n"
     "}\n";
 
 #define ERRRET()                                                               \
@@ -94,6 +94,58 @@ const char *kernel_source =
            opencl_errstr(err));                                                \
     return 1;                                                                  \
   }
+
+static char *from_file(const char *filename) {
+  FILE *f = fopen(filename, "r");
+  if (!f)
+    return NULL;
+
+  struct onexit_ {
+    onexit_(FILE *f) : f(f) {}
+    ~onexit_() {
+      if (f)
+        fclose(f);
+    }
+
+  private:
+    FILE *f;
+  } onexit(f);
+
+  if (ferror(f)) {
+    return NULL;
+  }
+
+  char *buffer = NULL;
+  unsigned blocksize = 8192;
+
+  // warning, not unit tested
+  for (uint64_t blocks_read = 0;;) {
+    {
+      char *tmp = (char *)realloc(buffer, ((blocks_read + 1) * blocksize));
+      if (!tmp) {
+        free(buffer);
+        return NULL;
+      }
+      buffer = tmp;
+    }
+
+    size_t r = fread(&buffer[blocksize * blocks_read], 1, blocksize, f);
+    blocks_read++;
+
+    assert(r <= blocksize);
+    if (r < blocksize) {
+      if (feof(f)) {
+        // reached end of file
+        uint64_t N = ((blocks_read - 1) * blocksize) + r;
+        buffer[N] = '\0';
+        return buffer; // realloc down?
+      } else if (ferror(f)) {
+        free(buffer);
+        return NULL;
+      }
+    }
+  }
+}
 
 static int target(uint32_t bytes, const char *src, char *dst) {
   // copying from
@@ -118,8 +170,26 @@ static int target(uint32_t bytes, const char *src, char *dst) {
   cl_command_queue queue = clCreateCommandQueue(context, device, 0, &err);
   ERRRET()
 
+  char *f = from_file(SRCFILE());
+  struct onexit_ {
+    onexit_(char *f) : f(f) {}
+    ~onexit_() { free(f); }
+    char *f;
+  } onexit(f);
+
+  if (!f) {
+    printf("opencl failed to read file %s\n", SRCFILE());
+    return 1;
+  }
+
+  const char *sources[] = {
+      kernel_source,
+      f,
+  };
+  size_t Nsources = sizeof(sources) / sizeof(sources[0]);
+
   cl_program program =
-      clCreateProgramWithSource(context, 1, &kernel_source, NULL, &err);
+      clCreateProgramWithSource(context, Nsources, sources, NULL, &err);
   ERRRET()
 
   err = clBuildProgram(program, 1, &device, NULL, NULL, NULL);
@@ -166,8 +236,6 @@ static int target(uint32_t bytes, const char *src, char *dst) {
                              NULL);
   ERRRET()
 
-  printf("run kernel\n");
-
   err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &global_work_size, NULL,
                                0, NULL, NULL);
   ERRRET()
@@ -183,6 +251,5 @@ static int target(uint32_t bytes, const char *src, char *dst) {
 }
 
 #endif
-
 
 #endif
