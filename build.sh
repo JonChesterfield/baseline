@@ -37,6 +37,7 @@ echo libamdocl64.so > amdocl64.icd
 # it would not be necessary with the icd_linux source from khronos
 export OCL_ICD_VENDORS=`pwd`/
 
-# 220 is the default, accoridng to an message in cl_version.h
+# 220 is the default, according to a message in cl_version.h
 $CLANGXX -std=c++11  -D__OPENCL__ -D__OPENCL_C_VERSION__=220 -DCL_TARGET_OPENCL_VERSION=220 example.cpp -I$RDIR/include/ -o example.opencl -Wno-deprecated-declarations -L$RDIR/lib -Wl,-rpath=$RDIR/lib -lOpenCL 
 
+./example.opencl
