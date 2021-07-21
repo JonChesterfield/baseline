@@ -40,9 +40,13 @@ $CLANGXX -std=c++11 -x hip example.cpp --offload-arch=$GFX -L$RDIR/lib -Wl,-rpat
 echo libamdocl64.so > amdocl64.icd
 # trailing / is necessary, as loader/linux/icd_linux just pastes the contents of that file onto the evar
 # it would not be necessary with the icd_linux source from khronos
+
 export OCL_ICD_VENDORS=`pwd`/
 
 # 220 is the default, according to a message in cl_version.h
-$CLANGXX -std=c++11  -D__OPENCL__ -D__OPENCL_C_VERSION__=220 -DCL_TARGET_OPENCL_VERSION=220 example.cpp -I$RDIR/include/ -o example.opencl -Wno-deprecated-declarations -L$RDIR/lib -Wl,-rpath=$RDIR/lib -lOpenCL 
+$CLANGXX -std=c++11  -D__OPENCL__ -D__OPENCL_C_VERSION__=220 -DCL_TARGET_OPENCL_VERSION=220 example.cpp -I$RDIR/include/ -o example.cxx.opencl -Wno-deprecated-declarations -L$RDIR/lib -Wl,-rpath=$RDIR/lib -lOpenCL 
 
-./example.opencl
+$CLANG -std=c99  -D__OPENCL__ -D__OPENCL_C_VERSION__=220 -DCL_TARGET_OPENCL_VERSION=220 -x c example.cpp -I$RDIR/include/ -o example.c.opencl -Wno-deprecated-declarations -L$RDIR/lib -Wl,-rpath=$RDIR/lib -lOpenCL 
+
+
+./example.c.opencl

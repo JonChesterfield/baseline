@@ -95,8 +95,9 @@ const char *kernel_source =
     return 1;                                                                  \
   }
 
-static int target(const char *srcfile, uint32_t bytes, const char *src,
-                  char *dst) {
+static int target_opened_source(const char *srcfile_contents, uint32_t bytes,
+                                const char *src, char *dst) {
+
   // copying from
   // https://rocmdocs.amd.com/en/latest/Programming_Guides/Opencl-programming-guide.html#build-run-opencl
 
@@ -119,21 +120,9 @@ static int target(const char *srcfile, uint32_t bytes, const char *src,
   cl_command_queue queue = clCreateCommandQueue(context, device, 0, &err);
   ERRRET()
 
-  char *f = from_file(srcfile);
-  struct onexit_ {
-    onexit_(char *f) : f(f) {}
-    ~onexit_() { free(f); }
-    char *f;
-  } onexit(f);
-
-  if (!f) {
-    printf("opencl failed to read file %s\n", srcfile);
-    return 1;
-  }
-
   const char *sources[] = {
       kernel_source,
-      f,
+      srcfile_contents,
   };
   size_t Nsources = sizeof(sources) / sizeof(sources[0]);
 
@@ -199,6 +188,21 @@ static int target(const char *srcfile, uint32_t bytes, const char *src,
   clFinish(queue);
 
   return 0;
+}
+
+static int target(const char *srcfile, uint32_t bytes, const char *src,
+                  char *dst) {
+
+  char *f = from_file(srcfile);
+
+  if (!f) {
+    printf("opencl failed to read file %s\n", srcfile);
+    return 1;
+  }
+
+  int rc = target_opened_source(f, bytes, src, dst);
+  free(f);
+  return rc;
 }
 
 #endif

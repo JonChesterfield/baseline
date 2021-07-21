@@ -56,7 +56,7 @@ static inline char *from_file(const char *filename) {
   return res;
 }
 
-inline int compare_withbuffer(
+static inline int compare_withbuffer(
     const char *srcfile, void (*host)(unsigned, const char *, char *),
     int (*target)(const char *srcfile, unsigned, const char *, char *),
     unsigned N, const char *src, char *dst, char *res) {
@@ -85,7 +85,7 @@ inline int compare_withbuffer(
   return 0;
 }
 
-inline int
+static inline int
 compare(const char *srcfile, void (*host)(unsigned, const char *, char *),
         int (*target)(const char *srcfile, unsigned, const char *, char *),
         unsigned N, const char *src) {
